@@ -61,8 +61,15 @@ class LinkCreate(SQLModel):
     secret: str | None = None
 
 class Link(LinkBase, table=True):
+    """
+    url: HttpUrl | str = Field(sa_type=AutoString) 
+    description: str | None = Field(default=None)
+    reduced_url: str | None = Field(default=None)
+
+    """
+    
     id: str = Field(primary_key=True)
-    user_id: str | None = Field(foreign_key="user.id")
+    owner_id: str | None = Field(foreign_key="user.id")
     private: bool | None = Field(default=False)
     secret: str | None = Field(default=None)
     clicks: int = Field(default=0)

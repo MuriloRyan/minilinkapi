@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import Annotated
+from sqlalchemy.orm import session
 from sqlmodel import Session, select
 import minilink_api.models as md
 from minilink_api.core import (
@@ -9,7 +10,7 @@ from minilink_api.core import (
     get_current_user_from_token,
     verify_password,
 )
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.security import OAuth2PasswordBearer
 
 router = APIRouter(prefix="/links", tags=["links"])
@@ -44,7 +45,7 @@ def create_link(token: Annotated[str, Depends(oauth2_scheme)],
         description = link_post.description,
         private = link_post.private,
         secret = encrypted_secret if link_post.secret else None,
-        user_id = user_db.id,
+        owner_id = user_db.id,
         reduced_url = reduced_url
     )
 
@@ -104,3 +105,23 @@ def short_redirect(minilink: str | None, session: SessionDep,
         return {'minilink': query.reduced_url, 'url': str(query.url), 'description': query.description, 'clicks': query.clicks}
 
     raise HTTPException(status_code=404, detail="Link not found")
+
+@root_router.delete('/{minilink}/delete')
+def delete_link(minilink: str, session: SessionDep,
+                token: Annotated[str, Depends(oauth2_scheme)]):
+    
+    user = get_current_user_from_token(token)
+
+    user_query = session.exec(select(md.User).where(md.User.email == user)).first()
+    link_query = session.exec(select(md.Link).where(md.Link.reduced_url == minilink)).first()
+
+    if user_query and link_query:
+        if user_query.id != link_query.owner_id:
+
+            raise HTTPException(status_code=403, detail="You're not the owner of the link!")
+        
+        session.delete(link_query)
+        session.commit()
+        return Response(status_code=204)
+
+    raise HTTPException(status_code=400, detail='User or Link not found')
