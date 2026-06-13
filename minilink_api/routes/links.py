@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import Annotated
-from sqlalchemy.orm import session
 from sqlmodel import Session, select
 import minilink_api.models as md
 from minilink_api.core import (

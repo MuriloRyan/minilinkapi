@@ -1,14 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import Annotated
 from sqlmodel import Session, select
 import minilink_api.models as md
 from minilink_api.core import get_session, get_password_hash, create_token, verify_password
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
+
+from minilink_api.core import (
+    get_password_hash,
+    get_current_user_from_token,
+    verify_password,
+)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/token")
 
 @router.post("/create")
 def create_user(user_post: md.UserCreate, session: SessionDep):
@@ -47,3 +54,36 @@ def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], session: S
     access_token = create_token(data={"sub": user.email})
     
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post('/changepwd')
+def change_pwd(token: Annotated[str, Depends(oauth2_scheme)],
+                session: SessionDep,
+                pwds_data: md.ChangePassword):
+    user_email = get_current_user_from_token(token)
+
+    user_query = session.exec(select(md.User).where(md.User.email == user_email)).first()
+    
+    if user_query:
+        if verify_password(pwds_data.current_password, user_query.password):
+
+            hashed_newpwd = get_password_hash(pwds_data.new_password)
+
+            if verify_password(pwds_data.new_password, user_query.password):
+                raise HTTPException(
+                    status_code=400,
+                    detail="New password can't be equal to your current password"
+                )
+
+            user_query.password = hashed_newpwd
+
+            session.add(user_query)
+            session.commit()
+            session.refresh(user_query)
+
+            return {'message': 'User password modified'}
+        
+        raise HTTPException(
+            status_code=401,
+            detail="Current password is incorrect",
+            headers={"WWW-Authenticate": "Bearer"},
+        )

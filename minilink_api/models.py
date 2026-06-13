@@ -45,6 +45,10 @@ class UserUpdate(UserBase):
     password: str | None = None
     links: int | None = None
 
+class ChangePassword(SQLModel):
+    current_password: str
+    new_password: str
+
 """
     Link related models go here
 """
