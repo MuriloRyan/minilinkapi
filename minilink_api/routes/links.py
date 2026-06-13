@@ -60,25 +60,6 @@ def create_link(token: Annotated[str, Depends(oauth2_scheme)],
     
     return {"message": "Link created successfully", "link": link_post}
 
-
-@router.get("/{minilink}")
-def get_link_by_minilink(minilink: str, session: SessionDep):
-    query = session.exec(select(md.Link).where(md.Link.reduced_url == minilink)).first()
-
-    if query:
-        link_data = md.LinkPublic(
-            url=str(query.url),
-            description=query.description,
-            reduced_url=query.reduced_url,
-            private=query.private,
-            clicks=query.clicks
-        )
-
-        return link_data
-    
-    raise HTTPException(status_code=404, detail="Link not found")
-
-
 @root_router.get("/{minilink}")
 def short_redirect(minilink: str | None, session: SessionDep,
     link_secret: Annotated[str | None, Header()] = None,
