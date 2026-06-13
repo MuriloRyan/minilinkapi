@@ -33,7 +33,7 @@ def create_user(user_post: md.UserCreate, session: SessionDep):
         session.add(final_user)
         session.commit()
         session.refresh(final_user)
-        return final_user
+        return md.userPublic(username=user_post.username, links = 0)
 
     raise HTTPException(status_code=409, detail=f"A user already exists with E-mail {user_post.email}.")
 
