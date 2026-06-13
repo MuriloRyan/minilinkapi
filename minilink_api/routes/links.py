@@ -105,7 +105,7 @@ def short_redirect(minilink: str | None, session: SessionDep,
 
     raise HTTPException(status_code=404, detail="Link not found")
 
-@root_router.delete('/{minilink}/delete')
+@root_router.delete('/{minilink}')
 def delete_link(minilink: str, session: SessionDep,
                 token: Annotated[str, Depends(oauth2_scheme)]):
     
